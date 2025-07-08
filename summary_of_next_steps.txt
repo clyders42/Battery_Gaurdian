@@ -1,0 +1,38 @@
+# Battery Guardian App Development Summary
+
+## What We Have Done:
+
+1.  **Project Scaffolding:**
+    *   Added all necessary permissions to `AndroidManifest.xml`.
+    *   Created the core `BatteryWatcherService.kt` to monitor battery status.
+    *   Created `BootReceiver.kt` to ensure the service can start after the device reboots.
+    *   Created a basic `CountdownActivity.kt` to act as the overlay.
+    *   Set up a simple settings UI in `MainActivity.kt` with buttons to enable/disable the service.
+
+2.  **Build Configuration:**
+    *   Identified that the build was failing because the Gradle daemon was using an incompatible Java version (Java 8).
+
+## What We Still Need To Do:
+
+1.  **Fix Build Environment:**
+    *   Update the `gradle.properties` file to point to your newly installed JDK 24. You will need to add a line like `org.gradle.java.home=C:/path/to/your/jdk-24`.
+    *   After restarting your terminal, we will run the build again to confirm the environment is set up correctly.
+
+2.  **Implement Core Logic:**
+    *   **Countdown Timer:** Add a real countdown timer to `CountdownActivity.kt` that ticks down from the user-defined duration.
+    *   **Charger Detection:** Make the countdown overlay disappear automatically if the user plugs in the charger.
+    *   **Foreground Service Notification:** Create a proper notification for the `BatteryWatcherService` as required by Android for foreground services.
+
+3.  **Flesh out Settings:**
+    *   Add UI controls in `MainActivity.kt` to allow users to:
+        *   Adjust the timer duration (1-5 minutes).
+        *   Choose a visual style for the timer.
+        *   Toggle a sound alert.
+    *   Save these settings to the device's storage.
+
+4.  **Request Permissions:**
+    *   Implement the logic to properly request the "ignore battery optimizations" permission from the user.
+
+5.  **Testing and Polish:**
+    *   Thoroughly test all features to ensure the app is reliable.
+    *   Polish the UI for a better user experience.
