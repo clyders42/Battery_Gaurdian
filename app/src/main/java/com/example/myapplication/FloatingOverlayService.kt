@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.background
@@ -92,6 +93,11 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private fun showOverlay() {
+        if (composeView != null && composeView?.parent != null) {
+            // Overlay is already shown and attached to window, do nothing
+            return
+        }
+
         val params = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -168,6 +174,7 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d("FloatingOverlayService", "onDestroy called. Removing overlay.")
         if (composeView != null) {
             windowManager?.removeView(composeView)
             composeView = null

@@ -26,7 +26,17 @@ class BatteryWatcherService : Service() {
 
             Log.d("BatteryWatcherService", "Battery level: $batteryPct%")
 
-            if (batteryPct <= 1.0f) {
+            val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            Log.d("BatteryWatcherService", "Battery status: $status")
+            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                             status == BatteryManager.BATTERY_STATUS_FULL
+
+            if (isCharging) {
+                Log.d("BatteryWatcherService", "Charger plugged in. Attempting to stop overlay.")
+                val overlayIntent = Intent(context, FloatingOverlayService::class.java)
+                context?.stopService(overlayIntent)
+                Log.d("BatteryWatcherService", "stopService called for FloatingOverlayService.")
+            } else if (batteryPct <= 1.0f) {
                 val prefs = getSharedPreferences("BatteryGuardianPrefs", Context.MODE_PRIVATE)
                 val timerDuration = prefs.getFloat("timer_duration", 2f).toLong() * 60 // Convert minutes to seconds
                 val soundAlert = prefs.getBoolean("sound_alert", false)
