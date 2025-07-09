@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,8 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.example.myapplication.ui.theme.SliderActiveTrackColor
+import com.example.myapplication.ui.theme.SliderInactiveTrackColor
 
 class MainActivity : ComponentActivity() {
 
@@ -44,7 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyApplicationTheme {
+            MyApplicationTheme(dynamicColor = false) {
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 var timerDuration by remember { mutableFloatStateOf(prefs.getFloat(KEY_TIMER_DURATION, 2f)) }
                 var soundAlert by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ALERT, false)) }
@@ -172,14 +176,18 @@ fun SettingsScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = if (serviceEnabled) "Enabled" else "Disabled",
-            modifier = Modifier.padding(bottom = 16.dp))
+            modifier = Modifier.padding(bottom = 150.dp))
 
-        Text(text = "Timer Duration: ${timerDuration.toInt()} minutes")
+        Text(text = "Timer Duration: ${String.format("%.1f", timerDuration)} minutes")
         Slider(
             value = timerDuration,
             onValueChange = onTimerDurationChange,
-            valueRange = 1f..5f,
-            steps = 3,
+            valueRange = 1f..2f,
+            steps = 1,
+            colors = SliderDefaults.colors(
+                activeTrackColor = SliderActiveTrackColor,
+                inactiveTrackColor = SliderInactiveTrackColor
+            ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
 
@@ -189,6 +197,10 @@ fun SettingsScreen(
             onValueChange = onVisualStyleChange,
             valueRange = 0f..2f, // Assuming 3 styles (0, 1, 2)
             steps = 2,
+            colors = SliderDefaults.colors(
+                activeTrackColor = SliderActiveTrackColor,
+                inactiveTrackColor = SliderInactiveTrackColor
+            ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
 
@@ -213,5 +225,24 @@ fun SettingsScreen(
         Button(onClick = onTestTimer) {
             Text("Test Timer")
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    MyApplicationTheme {
+        SettingsScreen(
+            timerDuration = 2f,
+            onTimerDurationChange = {},
+            soundAlert = true,
+            onSoundAlertChange = {},
+            visualStyle = 0f,
+            onVisualStyleChange = {},
+            serviceEnabled = true,
+            onStartService = {},
+            onStopService = {},
+            onTestTimer = {}
+        )
     }
 }

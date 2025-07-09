@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +44,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
+import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 
@@ -120,11 +122,13 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 
         composeView = ComposeView(this).apply {
             setContent {
-                FloatingCountdownOverlay(
-                    initialTime = timerDurationSeconds,
-                    visualStyle = visualStyle.toInt(),
-                    onDismiss = { stopSelf() }
-                )
+                MyApplicationTheme(dynamicColor = false) {
+                    FloatingCountdownOverlay(
+                        initialTime = timerDurationSeconds,
+                        visualStyle = visualStyle.toInt(),
+                        onDismiss = { stopSelf() }
+                    )
+                }
             }
         }
         composeView!!.setViewTreeLifecycleOwner(this)
@@ -223,14 +227,13 @@ fun FloatingCountdownOverlay(
                 painter = painterResource(id = R.drawable.battery_low_alert),
                 contentDescription = "Low Battery Alert"
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(75.dp))
             Text(
                 text = timeFormatted,
                 color = textColor,
-                fontSize = 48.sp,
-                style = TextStyle(lineHeight = 64.sp)
+                style = MaterialTheme.typography.displayLarge
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(50.dp))
             Button(onClick = onDismiss) {
                 Text("Dismiss")
             }
