@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private val KEY_TIMER_DURATION = "timer_duration"
     private val KEY_SOUND_ALERT = "sound_alert"
     private val KEY_VISUAL_STYLE = "visual_style"
+    private val KEY_SERVICE_ENABLED = "service_enabled"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
                 var timerDuration by remember { mutableFloatStateOf(prefs.getFloat(KEY_TIMER_DURATION, 2f)) }
                 var soundAlert by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ALERT, false)) }
                 var visualStyle by remember { mutableFloatStateOf(prefs.getFloat(KEY_VISUAL_STYLE, 0f)) }
+                var serviceEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SERVICE_ENABLED, false)) }
 
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -70,8 +72,19 @@ class MainActivity : ComponentActivity() {
                             visualStyle = it
                             prefs.edit().putFloat(KEY_VISUAL_STYLE, it).apply()
                         },
-                        onStartService = { startBatteryWatcherService() },
-                        onStopService = { stopBatteryWatcherService() }
+                        serviceEnabled = serviceEnabled,
+                        onStartService = {
+                            startBatteryWatcherService()
+                            serviceEnabled = true
+                            prefs.edit().putBoolean(KEY_SERVICE_ENABLED, true).apply()
+                        },
+                        onStopService = {
+                            stopBatteryWatcherService()
+                            serviceEnabled = false
+                            prefs.edit().putBoolean(KEY_SERVICE_ENABLED, false).apply()
+                        }
+                    ,
+                        onTestTimer = { startTestTimer() }
                     )
                 }
             }
@@ -88,6 +101,15 @@ class MainActivity : ComponentActivity() {
     private fun stopBatteryWatcherService() {
         val intent = Intent(this, BatteryWatcherService::class.java)
         stopService(intent)
+    }
+
+    private fun startTestTimer() {
+        val overlayIntent = Intent(this, CountdownActivity::class.java)
+        overlayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
+        overlayIntent.putExtra("SOUND_ALERT", true)
+        overlayIntent.putExtra("VISUAL_STYLE", 0f)
+        startActivity(overlayIntent)
     }
 
     private fun requestOverlayPermission() {
@@ -122,14 +144,19 @@ fun SettingsScreen(
     onSoundAlertChange: (Boolean) -> Unit,
     visualStyle: Float,
     onVisualStyleChange: (Float) -> Unit,
+    serviceEnabled: Boolean,
     onStartService: () -> Unit,
-    onStopService: () -> Unit
+    onStopService: () -> Unit,
+    onTestTimer: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text(text = if (serviceEnabled) "Enabled" else "Disabled",
+            modifier = Modifier.padding(bottom = 16.dp))
+
         Text(text = "Timer Duration: ${timerDuration.toInt()} minutes")
         Slider(
             value = timerDuration,
@@ -165,6 +192,9 @@ fun SettingsScreen(
         }
         Button(onClick = onStopService) {
             Text("Disable Battery Guardian")
+        }
+        Button(onClick = onTestTimer) {
+            Text("Test Timer")
         }
     }
 }

@@ -30,6 +30,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CountdownActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:taskAffinity="" />
+
         <service
             android:name=".BatteryWatcherService"
             android:enabled="true"

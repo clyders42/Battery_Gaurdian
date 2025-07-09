@@ -4,13 +4,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.PixelFormat
 import android.media.MediaPlayer
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
@@ -46,6 +55,22 @@ class CountdownActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Set window flags for overlay
+        window.apply {
+            setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+            setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+            addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
+            addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            } else {
+                setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
+            }
+            // Make background transparent
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setFormat(PixelFormat.TRANSLUCENT)
+        }
+
         val timerDurationSeconds = intent.getLongExtra("TIMER_DURATION_SECONDS", 120L)
         val soundAlert = intent.getBooleanExtra("SOUND_ALERT", false)
         val visualStyle = intent.getFloatExtra("VISUAL_STYLE", 0f)
@@ -67,7 +92,9 @@ class CountdownActivity : ComponentActivity() {
                     timeLeft--
                 }
             }
-            CountdownOverlay(timeLeft = timeLeft, visualStyle = visualStyle)
+            CountdownOverlay(timeLeft = timeLeft, visualStyle = visualStyle) {
+                finish()
+            }
         }
     }
 
@@ -80,7 +107,7 @@ class CountdownActivity : ComponentActivity() {
 }
 
 @Composable
-fun CountdownOverlay(timeLeft: Long, visualStyle: Float) {
+fun CountdownOverlay(timeLeft: Long, visualStyle: Float, onDismiss: () -> Unit) {
     val minutes = TimeUnit.SECONDS.toMinutes(timeLeft)
     val seconds = timeLeft - TimeUnit.MINUTES.toSeconds(minutes)
     val timeFormatted = String.format("%02d:%02d", minutes, seconds)
@@ -109,11 +136,21 @@ fun CountdownOverlay(timeLeft: Long, visualStyle: Float) {
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "PLUG IN NOW!\n$timeFormatted",
-            color = textColor,
-            fontSize = 48.sp,
-            style = TextStyle(lineHeight = 64.sp)
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Text(
+                text = "PLUG IN NOW!\n$timeFormatted",
+                color = textColor,
+                fontSize = 48.sp,
+                style = TextStyle(lineHeight = 64.sp)
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(onClick = onDismiss) {
+                Text("Dismiss")
+            }
+        }
     }
 }

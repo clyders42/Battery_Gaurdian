@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">@font/orbitron_font_family</item>
+        <item name="android:textAppearance">@style/TextAppearance.Orbitron</item>
+    </style>
+
+    <style name="TextAppearance.Orbitron" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/orbitron_font_family</item>
+    </style>
 </resources>
