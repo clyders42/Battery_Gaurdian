@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.provider.Settings
 import android.os.PowerManager
 import com.example.myapplication.BatteryWatcherService
-import com.example.myapplication.CountdownActivity
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private val KEY_SOUND_ALERT = "sound_alert"
     private val KEY_VISUAL_STYLE = "visual_style"
     private val KEY_SERVICE_ENABLED = "service_enabled"
+    private val REQUEST_CODE_OVERLAY_PERMISSION = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,12 +104,29 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startTestTimer() {
-        val overlayIntent = Intent(this, CountdownActivity::class.java)
-        overlayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
-        overlayIntent.putExtra("SOUND_ALERT", true)
-        overlayIntent.putExtra("VISUAL_STYLE", 0f)
-        startActivity(overlayIntent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
+        } else {
+            val overlayIntent = Intent(this, FloatingOverlayService::class.java)
+            overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
+            overlayIntent.putExtra("SOUND_ALERT", true)
+            overlayIntent.putExtra("VISUAL_STYLE", 0f)
+            startService(overlayIntent)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_OVERLAY_PERMISSION) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
+                // Permission granted, start the service
+                startTestTimer() // This will now proceed to start the service
+            }
+        }
     }
 
     private fun requestOverlayPermission() {

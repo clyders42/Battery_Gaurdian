@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.example.myapplication.CountdownActivity
 
 class BatteryWatcherService : Service() {
 
@@ -32,11 +31,10 @@ class BatteryWatcherService : Service() {
                 val timerDuration = prefs.getFloat("timer_duration", 2f).toLong() * 60 // Convert minutes to seconds
                 val soundAlert = prefs.getBoolean("sound_alert", false)
 
-                val overlayIntent = Intent(context, CountdownActivity::class.java)
-                overlayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val overlayIntent = Intent(context, FloatingOverlayService::class.java)
                 overlayIntent.putExtra("TIMER_DURATION_SECONDS", timerDuration)
                 overlayIntent.putExtra("SOUND_ALERT", soundAlert)
-                startActivity(overlayIntent)
+                context?.startService(overlayIntent)
             }
         }
     }
