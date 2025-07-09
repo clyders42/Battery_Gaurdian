@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -217,8 +219,13 @@ fun FloatingCountdownOverlay(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize()
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.battery_low_alert),
+                contentDescription = "Low Battery Alert"
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "PLUG IN NOW!\n$timeFormatted",
+                text = timeFormatted,
                 color = textColor,
                 fontSize = 48.sp,
                 style = TextStyle(lineHeight = 64.sp)
