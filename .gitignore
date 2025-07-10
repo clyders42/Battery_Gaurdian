@@ -19,3 +19,4 @@ gradle.properties
 *.dm
 output-metadata.json
 java_pid*.hprof
+keystore.properties

@@ -4,13 +4,15 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    
 }
 
-// Load properties from gradle.properties file
-val properties = Properties().apply {
-    load(FileInputStream(rootProject.file("gradle.properties")))
+// Load keystore properties
+val keystorePropertiesFile = rootProject.file("app/keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+
 
 android {
     namespace = "com.clyde.nomody"
@@ -18,10 +20,12 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = properties.getProperty("GUARDIAN_KEY_ALIAS")
-            keyPassword = properties.getProperty("GUARDIAN_KEY_PASSWORD")
-            storeFile = file(properties.getProperty("GUARDIAN_STORE_FILE"))
-            storePassword = properties.getProperty("GUARDIAN_STORE_PASSWORD")
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
         }
     }
 
