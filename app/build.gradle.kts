@@ -1,15 +1,32 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     
 }
 
+// Load properties from gradle.properties file
+val properties = Properties().apply {
+    load(FileInputStream(rootProject.file("gradle.properties")))
+}
+
 android {
-    namespace = "com.example.myapplication"
+    namespace = "com.clyde.nomody"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            keyAlias = properties.getProperty("GUARDIAN_KEY_ALIAS")
+            keyPassword = properties.getProperty("GUARDIAN_KEY_PASSWORD")
+            storeFile = file(properties.getProperty("GUARDIAN_STORE_FILE"))
+            storePassword = properties.getProperty("GUARDIAN_STORE_PASSWORD")
+        }
+    }
+
     defaultConfig {
-        applicationId = "com.example.myapplication"
+        applicationId = "com.clyde.nomody"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -25,6 +42,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

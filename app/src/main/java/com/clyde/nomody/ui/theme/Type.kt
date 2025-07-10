@@ -1,4 +1,4 @@
-package com.example.myapplication.ui.theme
+package com.clyde.nomody.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.R
+import com.clyde.nomody.R
 
 val Orbitron = FontFamily(
     Font(R.font.orbitron_variablefont_wght, FontWeight.Normal)

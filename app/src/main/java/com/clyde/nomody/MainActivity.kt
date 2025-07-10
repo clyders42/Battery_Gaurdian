@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.clyde.nomody
 
 import android.content.Context
 import android.content.Intent
@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.os.PowerManager
-import com.example.myapplication.BatteryWatcherService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -32,9 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.ui.theme.MyApplicationTheme
-import com.example.myapplication.ui.theme.SliderActiveTrackColor
-import com.example.myapplication.ui.theme.SliderInactiveTrackColor
+import com.clyde.nomody.ui.theme.MyApplicationTheme
+import com.clyde.nomody.ui.theme.SliderActiveTrackColor
+import com.clyde.nomody.ui.theme.SliderInactiveTrackColor
 
 class MainActivity : ComponentActivity() {
 

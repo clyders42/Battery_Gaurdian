@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.clyde.nomody
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -34,9 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistry
@@ -45,7 +42,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.clyde.nomody.ui.theme.MyApplicationTheme
 
 class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 
