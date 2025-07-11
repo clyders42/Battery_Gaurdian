@@ -44,10 +44,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import com.clyde.nomody.ui.theme.MyApplicationTheme
 import com.clyde.nomody.ui.theme.PurpleGrey40
 import com.clyde.nomody.ui.theme.SliderActiveTrackColor
 import com.clyde.nomody.ui.theme.SliderInactiveTrackColor
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
 
@@ -58,7 +62,22 @@ class MainActivity : ComponentActivity() {
     private val KEY_SERVICE_ENABLED = "service_enabled"
     private val KEY_CUSTOM_SOUND_URI = "custom_sound_uri"
     private val REQUEST_CODE_OVERLAY_PERMISSION = 1001
-
+    private fun copySoundToInternalStorage(context: Context, uri: Uri): String? {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            if (inputStream != null) {
+                val file = File(context.filesDir, "custom_sound.mp3")
+                val outputStream = FileOutputStream(file)
+                inputStream.copyTo(outputStream)
+                inputStream.close()
+                outputStream.close()
+                return file.absolutePath
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -74,13 +93,11 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.GetContent()
                 ) { uri: Uri? ->
                     uri?.let {
-                        // Persist access permissions
-                        val contentResolver = applicationContext.contentResolver
-                        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        contentResolver.takePersistableUriPermission(uri, takeFlags)
-                        
-                        customSoundUri = it.toString()
-                        prefs.edit().putString(KEY_CUSTOM_SOUND_URI, it.toString()).apply()
+                        val path = copySoundToInternalStorage(applicationContext, it)
+                        if (path != null) {
+                            customSoundUri = path
+                            prefs.edit().putString(KEY_CUSTOM_SOUND_URI, path).apply()
+                        }
                     }
                 }
 
@@ -212,8 +229,14 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = if (serviceEnabled) "Enabled" else "Disabled",
-            modifier = Modifier.padding(bottom = 150.dp))
+        Text(
+            text = if (serviceEnabled) "Enabled" else "Disabled",
+            modifier = Modifier.padding(bottom = 300.dp),
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
 
         Text(text = "Timer Duration: ${String.format("%.1f", timerDuration)} minutes")
         Slider(

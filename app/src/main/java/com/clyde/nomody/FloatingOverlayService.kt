@@ -222,7 +222,7 @@ fun FloatingCountdownOverlay(
             val mediaPlayer = if (customSoundUri != null) {
                 try {
                     MediaPlayer().apply {
-                        setDataSource(context, Uri.parse(customSoundUri))
+                        setDataSource(customSoundUri)
                         prepare()
                     }
                 } catch (e: Exception) {
