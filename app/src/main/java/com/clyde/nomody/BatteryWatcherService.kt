@@ -36,14 +36,18 @@ class BatteryWatcherService : Service() {
                 val overlayIntent = Intent(context, FloatingOverlayService::class.java)
                 context?.stopService(overlayIntent)
                 Log.d("BatteryWatcherService", "stopService called for FloatingOverlayService.")
-            } else if (batteryPct <= 1.0f) {
+            } else if (batteryPct <= 1.0f && !isCharging) {
                 val prefs = getSharedPreferences("BatteryGuardianPrefs", Context.MODE_PRIVATE)
                 val timerDuration = prefs.getFloat("timer_duration", 2f).toLong() * 60 // Convert minutes to seconds
                 val soundAlert = prefs.getBoolean("sound_alert", false)
+                val overlaySize = prefs.getInt("overlay_size", 0)
+                val customSoundUri = prefs.getString("custom_sound_uri", null)
 
                 val overlayIntent = Intent(context, FloatingOverlayService::class.java)
                 overlayIntent.putExtra("TIMER_DURATION_SECONDS", timerDuration)
                 overlayIntent.putExtra("SOUND_ALERT", soundAlert)
+                overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
+                overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
                 context?.startService(overlayIntent)
             }
         }

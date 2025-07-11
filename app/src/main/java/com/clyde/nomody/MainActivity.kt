@@ -5,17 +5,28 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -28,9 +39,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.clyde.nomody.ui.theme.MyApplicationTheme
+import com.clyde.nomody.ui.theme.PurpleGrey40
 import com.clyde.nomody.ui.theme.SliderActiveTrackColor
 import com.clyde.nomody.ui.theme.SliderInactiveTrackColor
 
@@ -39,8 +54,9 @@ class MainActivity : ComponentActivity() {
     private val PREFS_NAME = "BatteryGuardianPrefs"
     private val KEY_TIMER_DURATION = "timer_duration"
     private val KEY_SOUND_ALERT = "sound_alert"
-    private val KEY_VISUAL_STYLE = "visual_style"
+    private val KEY_OVERLAY_SIZE = "overlay_size"
     private val KEY_SERVICE_ENABLED = "service_enabled"
+    private val KEY_CUSTOM_SOUND_URI = "custom_sound_uri"
     private val REQUEST_CODE_OVERLAY_PERMISSION = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,8 +66,23 @@ class MainActivity : ComponentActivity() {
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 var timerDuration by remember { mutableFloatStateOf(prefs.getFloat(KEY_TIMER_DURATION, 2f)) }
                 var soundAlert by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ALERT, false)) }
-                var visualStyle by remember { mutableFloatStateOf(prefs.getFloat(KEY_VISUAL_STYLE, 0f)) }
+                var overlaySize by remember { mutableStateOf(prefs.getInt(KEY_OVERLAY_SIZE, 0)) }
                 var serviceEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SERVICE_ENABLED, false)) }
+                var customSoundUri by remember { mutableStateOf(prefs.getString(KEY_CUSTOM_SOUND_URI, null)) }
+
+                val selectSoundLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri: Uri? ->
+                    uri?.let {
+                        // Persist access permissions
+                        val contentResolver = applicationContext.contentResolver
+                        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        contentResolver.takePersistableUriPermission(uri, takeFlags)
+                        
+                        customSoundUri = it.toString()
+                        prefs.edit().putString(KEY_CUSTOM_SOUND_URI, it.toString()).apply()
+                    }
+                }
 
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -69,10 +100,10 @@ class MainActivity : ComponentActivity() {
                             soundAlert = it
                             prefs.edit().putBoolean(KEY_SOUND_ALERT, it).apply()
                         },
-                        visualStyle = visualStyle,
-                        onVisualStyleChange = {
-                            visualStyle = it
-                            prefs.edit().putFloat(KEY_VISUAL_STYLE, it).apply()
+                        overlaySize = overlaySize,
+                        onOverlaySizeChange = {
+                            overlaySize = it
+                            prefs.edit().putInt(KEY_OVERLAY_SIZE, it).apply()
                         },
                         serviceEnabled = serviceEnabled,
                         onStartService = {
@@ -84,9 +115,11 @@ class MainActivity : ComponentActivity() {
                             stopBatteryWatcherService()
                             serviceEnabled = false
                             prefs.edit().putBoolean(KEY_SERVICE_ENABLED, false).apply()
+                        },
+                        onTestTimer = { startTestTimer() },
+                        onSelectSound = {
+                            selectSoundLauncher.launch("audio/mpeg")
                         }
-                    ,
-                        onTestTimer = { startTestTimer() }
                     )
                 }
             }
@@ -113,10 +146,15 @@ class MainActivity : ComponentActivity() {
             )
             startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
         } else {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val overlaySize = prefs.getInt(KEY_OVERLAY_SIZE, 0)
+            val customSoundUri = prefs.getString(KEY_CUSTOM_SOUND_URI, null)
+
             val overlayIntent = Intent(this, FloatingOverlayService::class.java)
             overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
             overlayIntent.putExtra("SOUND_ALERT", true)
-            overlayIntent.putExtra("VISUAL_STYLE", 0f)
+            overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
+            overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
             startService(overlayIntent)
         }
     }
@@ -161,12 +199,13 @@ fun SettingsScreen(
     onTimerDurationChange: (Float) -> Unit,
     soundAlert: Boolean,
     onSoundAlertChange: (Boolean) -> Unit,
-    visualStyle: Float,
-    onVisualStyleChange: (Float) -> Unit,
+    overlaySize: Int,
+    onOverlaySizeChange: (Int) -> Unit,
     serviceEnabled: Boolean,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
-    onTestTimer: () -> Unit
+    onTestTimer: () -> Unit,
+    onSelectSound: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -189,18 +228,16 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
 
-        Text(text = "Visual Style: ${visualStyle.toInt()}")
-        Slider(
-            value = visualStyle,
-            onValueChange = onVisualStyleChange,
-            valueRange = 0f..2f, // Assuming 3 styles (0, 1, 2)
-            steps = 2,
-            colors = SliderDefaults.colors(
-                activeTrackColor = SliderActiveTrackColor,
-                inactiveTrackColor = SliderInactiveTrackColor
-            ),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Overlay Size")
+        Spacer(modifier = Modifier.height(8.dp))
+        OverlaySizeSelector(
+            selectedSize = overlaySize,
+            onSizeSelected = onOverlaySizeChange
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -212,6 +249,9 @@ fun SettingsScreen(
                 checked = soundAlert,
                 onCheckedChange = onSoundAlertChange
             )
+            Button(onClick = onSelectSound) {
+                Text("Select Sound")
+            }
         }
 
         Button(onClick = onStartService) {
@@ -226,6 +266,73 @@ fun SettingsScreen(
     }
 }
 
+@Composable
+fun OverlaySizeSelector(
+    selectedSize: Int,
+    onSizeSelected: (Int) -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Full screen option
+        SizeBox(
+            sizeFraction = 1f,
+            isSelected = selectedSize == 0,
+            onClick = { onSizeSelected(0) }
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        // Half screen option
+        SizeBox(
+            sizeFraction = 0.5f,
+            isSelected = selectedSize == 1,
+            onClick = { onSizeSelected(1) }
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        // One-third screen option
+        SizeBox(
+            sizeFraction = 1f / 3f,
+            isSelected = selectedSize == 2,
+            onClick = { onSizeSelected(2) }
+        )
+    }
+}
+
+@Composable
+fun SizeBox(
+    sizeFraction: Float,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    Box(
+        modifier = Modifier
+            .size(width = 40.dp, height = 60.dp)
+            .border(width = 2.dp, color = borderColor)
+            .clickable(onClick = onClick)
+            .padding(2.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height
+            // Draw the grey part
+            drawRect(
+                color = PurpleGrey40,
+                size = Size(canvasWidth, canvasHeight * sizeFraction)
+            )
+            // Draw the black part
+            if (sizeFraction < 1f) {
+                drawRect(
+                    color = Color.Black,
+                    topLeft = Offset(0f, canvasHeight * sizeFraction),
+                    size = Size(canvasWidth, canvasHeight * (1 - sizeFraction))
+                )
+            }
+        }
+    }
+}
+
+
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
@@ -235,12 +342,13 @@ fun SettingsScreenPreview() {
             onTimerDurationChange = {},
             soundAlert = true,
             onSoundAlertChange = {},
-            visualStyle = 0f,
-            onVisualStyleChange = {},
+            overlaySize = 0,
+            onOverlaySizeChange = {},
             serviceEnabled = true,
             onStartService = {},
             onStopService = {},
-            onTestTimer = {}
+            onTestTimer = {},
+            onSelectSound = {}
         )
     }
 }

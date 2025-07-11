@@ -42,6 +42,20 @@ val Typography = Typography(
         lineHeight = 64.sp,
         letterSpacing = 0.sp
     ),
+    headlineLarge = TextStyle(
+        fontFamily = Orbitron,
+        fontWeight = FontWeight.Normal,
+        fontSize = 60.sp,
+        lineHeight = 40.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = Orbitron,
+        fontWeight = FontWeight.Normal,
+        fontSize = 40.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp
+    ),
     labelSmall = TextStyle(
         fontFamily = Orbitron,
         fontWeight = FontWeight.Medium,

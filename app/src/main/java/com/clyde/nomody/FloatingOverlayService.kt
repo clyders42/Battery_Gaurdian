@@ -8,21 +8,27 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import android.media.MediaPlayer
+import android.net.Uri
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleService
@@ -40,9 +47,9 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.clyde.nomody.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
-import com.clyde.nomody.ui.theme.MyApplicationTheme
 
 class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 
@@ -56,7 +63,8 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
     private var composeView: ComposeView? = null
     private var timerDurationSeconds: Long = 10L
     private var soundAlert: Boolean = false
-    private var visualStyle: Float = 0f
+    private var overlaySize: Int = 0
+    private var customSoundUri: String? = null
 
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -82,7 +90,8 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
         
         timerDurationSeconds = intent?.getLongExtra("TIMER_DURATION_SECONDS", 10L) ?: 10L
         soundAlert = intent?.getBooleanExtra("SOUND_ALERT", false) ?: false
-        visualStyle = intent?.getFloatExtra("VISUAL_STYLE", 0f) ?: 0f
+        overlaySize = intent?.getIntExtra("OVERLAY_SIZE", 0) ?: 0
+        customSoundUri = intent?.getStringExtra("CUSTOM_SOUND_URI")
 
         showOverlay()
         
@@ -95,10 +104,26 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
             return
         }
 
+        val screenHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager?.currentWindowMetrics
+            windowMetrics?.bounds?.height() ?: 0
+        } else {
+            val displayMetrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager?.defaultDisplay?.getMetrics(displayMetrics)
+            displayMetrics.heightPixels
+        }
+
+        val overlayHeight = when (overlaySize) {
+            1 -> screenHeight / 2 // Half screen
+            2 -> screenHeight / 3 // One-third screen
+            else -> WindowManager.LayoutParams.MATCH_PARENT // Full screen
+        }
+
         val params = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                overlayHeight,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -109,7 +134,7 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
         } else {
             WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                overlayHeight,
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -128,7 +153,9 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
                 MyApplicationTheme(dynamicColor = false) {
                     FloatingCountdownOverlay(
                         initialTime = timerDurationSeconds,
-                        visualStyle = visualStyle.toInt(),
+                        overlaySize = overlaySize,
+                        soundAlert = soundAlert,
+                        customSoundUri = customSoundUri,
                         onDismiss = { stopSelf() }
                     )
                 }
@@ -182,10 +209,31 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 @Composable
 fun FloatingCountdownOverlay(
     initialTime: Long = 10L,
-    visualStyle: Int = 0,
+    overlaySize: Int,
+    soundAlert: Boolean,
+    customSoundUri: String?,
     onDismiss: () -> Unit
 ) {
     var timeLeft by remember { mutableStateOf(initialTime) }
+    val context = LocalContext.current
+
+    if (soundAlert) {
+        DisposableEffect(Unit) {
+            val mediaPlayer = if (customSoundUri != null) {
+                MediaPlayer().apply {
+                    setDataSource(context, Uri.parse(customSoundUri))
+                    prepare()
+                }
+            } else {
+                MediaPlayer.create(context, R.raw.low_battery_sound)
+            }
+            mediaPlayer?.start()
+
+            onDispose {
+                mediaPlayer?.release()
+            }
+        }
+    }
 
     LaunchedEffect(key1 = timeLeft) {
         if (timeLeft > 0) {
@@ -198,23 +246,8 @@ fun FloatingCountdownOverlay(
     val seconds = timeLeft - TimeUnit.MINUTES.toSeconds(minutes)
     val timeFormatted = String.format("%02d:%02d", minutes, seconds)
 
-    val backgroundColor: Color
-    val textColor: Color
-
-    when (visualStyle) {
-        1 -> {
-            backgroundColor = Color.Red.copy(alpha = 0.8f)
-            textColor = Color.Yellow
-        }
-        2 -> {
-            backgroundColor = Color.Blue.copy(alpha = 0.8f)
-            textColor = Color.Green
-        }
-        else -> {
-            backgroundColor = Color.Black.copy(alpha = 0.8f)
-            textColor = Color.White
-        }
-    }
+    val backgroundColor = Color.Black.copy(alpha = 0.8f)
+    val textColor = Color.White
 
     Box(
         modifier = Modifier
@@ -222,25 +255,85 @@ fun FloatingCountdownOverlay(
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.battery_low_alert),
-                contentDescription = "Low Battery Alert"
-            )
-            Spacer(modifier = Modifier.height(75.dp))
-            Text(
-                text = timeFormatted,
-                color = textColor,
-                style = MaterialTheme.typography.displayLarge
-            )
-            Spacer(modifier = Modifier.height(50.dp))
-            Button(onClick = onDismiss) {
-                Text("Dismiss")
+        when (overlaySize) {
+            // Full screen
+            0 -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.battery_low_alert),
+                        contentDescription = "Low Battery Alert"
+                    )
+                    Spacer(modifier = Modifier.height(75.dp))
+                    Text(
+                        text = timeFormatted,
+                        color = textColor,
+                        style = MaterialTheme.typography.displayLarge
+                    )
+                    Spacer(modifier = Modifier.height(50.dp))
+                    Button(onClick = onDismiss) {
+                        Text("Dismiss")
+                    }
+                }
+            }
+            // Half screen
+            1 -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.battery_low_alert),
+                        contentDescription = "Low Battery Alert",
+                        modifier = Modifier.height(250.dp) // Smaller image
+                    )
+                    Spacer(modifier = Modifier.height(25.dp))
+                    Text(
+                        text = timeFormatted,
+                        color = textColor,
+                        style = MaterialTheme.typography.headlineLarge // Slightly smaller text
+                    )
+                    Spacer(modifier = Modifier.height(25.dp))
+                    Button(onClick = onDismiss) {
+                        Text("Dismiss")
+                    }
+                }
+            }
+            // One-third screen
+            2 -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center, // Changed for manual spacing
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.battery_low_alert),
+                        contentDescription = "Low Battery Alert",
+                        modifier = Modifier.height(100.dp) // Slightly larger image
+                    )
+                    // Spacer added for manual control over padding
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = timeFormatted,
+                            color = textColor,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Button(onClick = onDismiss) {
+                            Text("Dismiss")
+                        }
+                    }
+                }
             }
         }
     }
 }
+
