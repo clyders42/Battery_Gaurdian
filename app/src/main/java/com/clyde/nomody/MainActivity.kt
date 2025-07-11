@@ -46,12 +46,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.lifecycleScope
 import com.clyde.nomody.ui.theme.MyApplicationTheme
 import com.clyde.nomody.ui.theme.PurpleGrey40
 import com.clyde.nomody.ui.theme.SliderActiveTrackColor
 import com.clyde.nomody.ui.theme.SliderInactiveTrackColor
 import java.io.File
 import java.io.FileOutputStream
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -163,16 +166,19 @@ class MainActivity : ComponentActivity() {
             )
             startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
         } else {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val overlaySize = prefs.getInt(KEY_OVERLAY_SIZE, 0)
-            val customSoundUri = prefs.getString(KEY_CUSTOM_SOUND_URI, null)
+            lifecycleScope.launch {
+                delay(5000) // 5-second delay
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val overlaySize = prefs.getInt(KEY_OVERLAY_SIZE, 0)
+                val customSoundUri = prefs.getString(KEY_CUSTOM_SOUND_URI, null)
 
-            val overlayIntent = Intent(this, FloatingOverlayService::class.java)
-            overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
-            overlayIntent.putExtra("SOUND_ALERT", true)
-            overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
-            overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
-            startService(overlayIntent)
+                val overlayIntent = Intent(this@MainActivity, FloatingOverlayService::class.java)
+                overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
+                overlayIntent.putExtra("SOUND_ALERT", true)
+                overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
+                overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
+                startService(overlayIntent)
+            }
         }
     }
 
