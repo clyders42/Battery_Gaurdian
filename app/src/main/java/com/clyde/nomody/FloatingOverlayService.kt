@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
@@ -62,7 +63,8 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
     private var windowManager: WindowManager? = null
     private var composeView: ComposeView? = null
     private var timerDurationSeconds: Long = 10L
-    private var soundAlert: Boolean = false
+    private var playWhenLocked: Boolean = false
+    private var playWhenUnlocked: Boolean = false
     private var overlaySize: Int = 0
     private var customSoundUri: String? = null
 
@@ -89,7 +91,8 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
         super.onStartCommand(intent, flags, startId)
         
         timerDurationSeconds = intent?.getLongExtra("TIMER_DURATION_SECONDS", 10L) ?: 10L
-        soundAlert = intent?.getBooleanExtra("SOUND_ALERT", false) ?: false
+        playWhenLocked = intent?.getBooleanExtra("PLAY_WHEN_LOCKED", false) ?: false
+        playWhenUnlocked = intent?.getBooleanExtra("PLAY_WHEN_UNLOCKED", false) ?: false
         overlaySize = intent?.getIntExtra("OVERLAY_SIZE", 0) ?: 0
         customSoundUri = intent?.getStringExtra("CUSTOM_SOUND_URI")
 
@@ -154,7 +157,8 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
                     FloatingCountdownOverlay(
                         initialTime = timerDurationSeconds,
                         overlaySize = overlaySize,
-                        soundAlert = soundAlert,
+                        playWhenLocked = playWhenLocked,
+                        playWhenUnlocked = playWhenUnlocked,
                         customSoundUri = customSoundUri,
                         onDismiss = { stopSelf() }
                     )
@@ -210,14 +214,19 @@ class FloatingOverlayService : LifecycleService(), SavedStateRegistryOwner {
 fun FloatingCountdownOverlay(
     initialTime: Long = 10L,
     overlaySize: Int,
-    soundAlert: Boolean,
+    playWhenLocked: Boolean,
+    playWhenUnlocked: Boolean,
     customSoundUri: String?,
     onDismiss: () -> Unit
 ) {
     var timeLeft by remember { mutableStateOf(initialTime) }
     val context = LocalContext.current
 
-    if (soundAlert) {
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    val isDeviceLocked = !powerManager.isInteractive
+    val shouldPlaySound = (isDeviceLocked && playWhenLocked) || (!isDeviceLocked && playWhenUnlocked)
+
+    if (shouldPlaySound) {
         DisposableEffect(Unit) {
             val mediaPlayer = if (customSoundUri != null) {
                 try {

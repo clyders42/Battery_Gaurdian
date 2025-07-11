@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
     private val KEY_OVERLAY_SIZE = "overlay_size"
     private val KEY_SERVICE_ENABLED = "service_enabled"
     private val KEY_CUSTOM_SOUND_URI = "custom_sound_uri"
+    private val KEY_SOUND_ON_UNLOCKED = "sound_on_unlocked"
     private val REQUEST_CODE_OVERLAY_PERMISSION = 1001
     private fun copySoundToInternalStorage(context: Context, uri: Uri): String? {
         try {
@@ -83,14 +85,51 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (!prefs.contains(KEY_SERVICE_ENABLED)) {
+            // First run, set default values
+            prefs.edit()
+                .putBoolean(KEY_SOUND_ALERT, true)
+                .putBoolean(KEY_SOUND_ON_UNLOCKED, false)
+                .putBoolean(KEY_SERVICE_ENABLED, true)
+                .apply()
+            startBatteryWatcherService()
+        }
+
         setContent {
             MyApplicationTheme(dynamicColor = false) {
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                var timerDuration by remember { mutableFloatStateOf(prefs.getFloat(KEY_TIMER_DURATION, 2f)) }
-                var soundAlert by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ALERT, false)) }
+                var timerDuration by remember { mutableStateOf(prefs.getFloat(KEY_TIMER_DURATION, 1f)) }
+                var soundAlert by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ALERT, true)) }
                 var overlaySize by remember { mutableStateOf(prefs.getInt(KEY_OVERLAY_SIZE, 0)) }
-                var serviceEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SERVICE_ENABLED, false)) }
+                var serviceEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SERVICE_ENABLED, true)) }
                 var customSoundUri by remember { mutableStateOf(prefs.getString(KEY_CUSTOM_SOUND_URI, null)) }
+                var soundOnUnlocked by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND_ON_UNLOCKED, false)) }
+                var showWarningDialog by remember { mutableStateOf(false) }
+
+                if (showWarningDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showWarningDialog = false },
+                        title = { Text("Enable Unlocked Sound Alert?") },
+                        text = { Text("Enabling sound alerts while the phone is unlocked may interrupt other audio, like music or videos. Are you sure?") },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    soundOnUnlocked = true
+                                    prefs.edit().putBoolean(KEY_SOUND_ON_UNLOCKED, true).apply()
+                                    showWarningDialog = false
+                                }
+                            ) {
+                                Text("Confirm")
+                            }
+                        },
+                        dismissButton = {
+                            Button(onClick = { showWarningDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
 
                 val selectSoundLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.GetContent()
@@ -119,6 +158,15 @@ class MainActivity : ComponentActivity() {
                         onSoundAlertChange = {
                             soundAlert = it
                             prefs.edit().putBoolean(KEY_SOUND_ALERT, it).apply()
+                        },
+                        soundOnUnlocked = soundOnUnlocked,
+                        onSoundOnUnlockedChange = { enabled ->
+                            if (enabled) {
+                                showWarningDialog = true
+                            } else {
+                                soundOnUnlocked = false
+                                prefs.edit().putBoolean(KEY_SOUND_ON_UNLOCKED, false).apply()
+                            }
                         },
                         overlaySize = overlaySize,
                         onOverlaySizeChange = {
@@ -171,10 +219,13 @@ class MainActivity : ComponentActivity() {
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 val overlaySize = prefs.getInt(KEY_OVERLAY_SIZE, 0)
                 val customSoundUri = prefs.getString(KEY_CUSTOM_SOUND_URI, null)
+                val playWhenLocked = prefs.getBoolean(KEY_SOUND_ALERT, false)
+                val playWhenUnlocked = prefs.getBoolean(KEY_SOUND_ON_UNLOCKED, false)
 
                 val overlayIntent = Intent(this@MainActivity, FloatingOverlayService::class.java)
                 overlayIntent.putExtra("TIMER_DURATION_SECONDS", 10L) // 10 seconds for testing
-                overlayIntent.putExtra("SOUND_ALERT", true)
+                overlayIntent.putExtra("PLAY_WHEN_LOCKED", playWhenLocked)
+                overlayIntent.putExtra("PLAY_WHEN_UNLOCKED", playWhenUnlocked)
                 overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
                 overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
                 startService(overlayIntent)
@@ -222,6 +273,8 @@ fun SettingsScreen(
     onTimerDurationChange: (Float) -> Unit,
     soundAlert: Boolean,
     onSoundAlertChange: (Boolean) -> Unit,
+    soundOnUnlocked: Boolean,
+    onSoundOnUnlockedChange: (Boolean) -> Unit,
     overlaySize: Int,
     onOverlaySizeChange: (Int) -> Unit,
     serviceEnabled: Boolean,
@@ -237,7 +290,7 @@ fun SettingsScreen(
     ) {
         Text(
             text = if (serviceEnabled) "Enabled" else "Disabled",
-            modifier = Modifier.padding(bottom = 300.dp),
+            modifier = Modifier.padding(bottom = 150.dp),
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
@@ -268,16 +321,34 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Sound Alert")
-            Switch(
-                checked = soundAlert,
-                onCheckedChange = onSoundAlertChange
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "Sound Alert (Locked)")
+                Switch(
+                    checked = soundAlert,
+                    onCheckedChange = onSoundAlertChange
+                )
+            }
+            Spacer(modifier = Modifier.height(1.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "Sound Alert (Unlocked)")
+                Switch(
+                    checked = soundOnUnlocked,
+                    onCheckedChange = onSoundOnUnlockedChange
+                )
+            }
+            Spacer(modifier = Modifier.height(1.dp))
             Button(onClick = onSelectSound) {
                 Text("Select Sound")
             }
@@ -367,10 +438,12 @@ fun SizeBox(
 fun SettingsScreenPreview() {
     MyApplicationTheme {
         SettingsScreen(
-            timerDuration = 2f,
+            timerDuration = 1f,
             onTimerDurationChange = {},
             soundAlert = true,
             onSoundAlertChange = {},
+            soundOnUnlocked = false,
+            onSoundOnUnlockedChange = {},
             overlaySize = 0,
             onOverlaySizeChange = {},
             serviceEnabled = true,

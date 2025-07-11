@@ -1,5 +1,6 @@
 package com.clyde.nomody
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,6 +12,7 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
@@ -36,16 +38,18 @@ class BatteryWatcherService : Service() {
                 val overlayIntent = Intent(context, FloatingOverlayService::class.java)
                 context?.stopService(overlayIntent)
                 Log.d("BatteryWatcherService", "stopService called for FloatingOverlayService.")
-            } else if (batteryPct <= 1.0f && !isCharging) {
+            } else if (batteryPct <= 1.0f) {
                 val prefs = getSharedPreferences("BatteryGuardianPrefs", Context.MODE_PRIVATE)
+                val playWhenLocked = prefs.getBoolean("sound_alert", false)
+                val playWhenUnlocked = prefs.getBoolean("sound_on_unlocked", false)
                 val timerDuration = prefs.getFloat("timer_duration", 2f).toLong() * 60 // Convert minutes to seconds
-                val soundAlert = prefs.getBoolean("sound_alert", false)
                 val overlaySize = prefs.getInt("overlay_size", 0)
                 val customSoundUri = prefs.getString("custom_sound_uri", null)
 
                 val overlayIntent = Intent(context, FloatingOverlayService::class.java)
                 overlayIntent.putExtra("TIMER_DURATION_SECONDS", timerDuration)
-                overlayIntent.putExtra("SOUND_ALERT", soundAlert)
+                overlayIntent.putExtra("PLAY_WHEN_LOCKED", playWhenLocked)
+                overlayIntent.putExtra("PLAY_WHEN_UNLOCKED", playWhenUnlocked)
                 overlayIntent.putExtra("OVERLAY_SIZE", overlaySize)
                 overlayIntent.putExtra("CUSTOM_SOUND_URI", customSoundUri)
                 context?.startService(overlayIntent)
