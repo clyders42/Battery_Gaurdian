@@ -220,9 +220,15 @@ fun FloatingCountdownOverlay(
     if (soundAlert) {
         DisposableEffect(Unit) {
             val mediaPlayer = if (customSoundUri != null) {
-                MediaPlayer().apply {
-                    setDataSource(context, Uri.parse(customSoundUri))
-                    prepare()
+                try {
+                    MediaPlayer().apply {
+                        setDataSource(context, Uri.parse(customSoundUri))
+                        prepare()
+                    }
+                } catch (e: Exception) {
+                    Log.e("FloatingOverlayService", "Error setting data source for custom sound", e)
+                    // Fallback to default sound
+                    MediaPlayer.create(context, R.raw.low_battery_sound)
                 }
             } else {
                 MediaPlayer.create(context, R.raw.low_battery_sound)
