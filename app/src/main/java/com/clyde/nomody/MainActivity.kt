@@ -297,7 +297,17 @@ fun SettingsScreen(
             )
         )
 
-        Text(text = "Timer Duration: ${String.format("%.1f", timerDuration)} minutes")
+        val durationText = if (timerDuration == 1.0f) {
+            "1 minute"
+        } else {
+            val formattedDuration = if (timerDuration % 1 == 0.0f) {
+                timerDuration.toInt().toString()
+            } else {
+                String.format("%.1f", timerDuration)
+            }
+            "$formattedDuration minutes"
+        }
+        Text(text = "Timer Duration: $durationText")
         Slider(
             value = timerDuration,
             onValueChange = onTimerDurationChange,
