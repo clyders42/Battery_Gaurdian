@@ -330,7 +330,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "Sound Alert (Locked)")
+                Text(text = "Sound Alert (Screen Off)")
                 Switch(
                     checked = soundAlert,
                     onCheckedChange = onSoundAlertChange
@@ -342,7 +342,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "Sound Alert (Unlocked)")
+                Text(text = "Sound Alert (Screen On)")
                 Switch(
                     checked = soundOnUnlocked,
                     onCheckedChange = onSoundOnUnlockedChange
